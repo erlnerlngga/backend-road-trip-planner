@@ -501,7 +501,7 @@ func (s *MysqlStore) DeleteBookmark(id int) error {
 
 // delete bookmark
 func (s *MysqlStore) DeleteBookmarkData(id int) error {
-	_, err := s.db.Exec("delete from user_dave where id = $1", id)
+	_, err := s.db.Exec("delete from user_save where id = $1", id)
 
 	if err != nil {
 		return err

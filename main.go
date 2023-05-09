@@ -15,6 +15,18 @@ func init() {
 }
 
 func main() {
-	server := NewApiServer(":8000")
+	store, err := NewMysqlStore()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := store.init(); err != nil {
+		log.Fatal(err)
+	}
+
+	defer store.db.Close()
+
+	server := NewApiServer(":8000", store)
 	server.Run()
 }

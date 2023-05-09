@@ -99,6 +99,12 @@ type NewBookmarkType struct {
 	Name_Bookmark string `json:"name_bookmark"`
 }
 
+type CreateBookmarkAndSaveType struct {
+	User_ID       int `json:"user_id"`
+	Name_Bookmark string `json:"name_bookmark"`
+	Destination_ID int `json:"destination_id"`
+}
+
 // to get bookmark table
 type BookmarkType struct {
 	ID            int `json:"id"`

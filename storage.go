@@ -9,19 +9,31 @@ import (
 )
 
 type Storage interface {
+	CheckEmail(email string) (*AccountType, error)
 	SignUp(acc *SignUpType) (*AccountType, error)
-	CheckCity(city string) (*CityType, error)
 	CreateNewCity(city *CreateNewCityType) (*CityType, error)
-	GetDestination(des_id int) (*DestinationType, error)
-	CreateDestination(des *CreateNewDestinationType) error
+	CheckCity(c string) (*CityType, error)
+	CreateNewDestination(des *CreateNewDestinationType) (*DestinationType, error)
+	GetSingleImage(des_id int, d *AllDestinationType) (*AllDestinationType, error)
 	GetAllDestination(city_id int) ([]*AllDestinationType, error)
+	GetDestination(des_id int) (*DestinationType, error)
+	CreateNewImage(img *CreateNewImageType) error
+	GetAllImages(des_id int) ([]*ImageType, error)
+	CreateNewBookmark(book *NewBookmarkType) (*BookmarkType, error)
+	GetAllBookmark(user_id int) ([]*BookmarkType, error)
+	SaveBookmarkData(newSave *CreateNewUser_SaveType) error
+	GetSingleImageSave_User(des_id int, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error)
+	GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_SaveType, error)
+	UpdateBookmarkName(id int, name *UpdateBookmarkNameType) error
+	DeleteBookmark(id int) error
+	DeleteBookmarkData(id int) error
 }
 
 type MysqlStore struct {
 	db *sql.DB
 }
 
-func NewPostgresStore() (*MysqlStore, error) {
+func NewMysqlStore() (*MysqlStore, error) {
 	// open the connection of db
 	db, err := sql.Open("mysql", os.Getenv("DSN"))
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"time"
 
@@ -19,13 +20,13 @@ var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 type APIServer struct {
 	listenAddr string
-	store Storage
+	store      Storage
 }
 
 func NewApiServer(listenAddr string, storage Storage) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
-		store: storage,
+		store:      storage,
 	}
 }
 
@@ -37,8 +38,6 @@ func (s *APIServer) Run() {
 	router.Post("/signup", makeHTTPHandleFunc(s.handleSignUp))
 	router.Post("/signin", makeHTTPHandleFunc(s.handleSignIn))
 	router.Get("/signin/{token}", makeHTTPHandleFunc(s.handleVerifySignIn))
-
-
 
 	router.Get("/logout", makeHTTPHandleFunc(s.handleLogout))
 
@@ -58,16 +57,16 @@ func (s *APIServer) Run() {
 	router.Get("/bookmark/{user_id}", makeHTTPHandleFunc(s.handleGetBookmarkName))
 
 	// handle get all data from bookmark call save_user table base on bookmark_id and join with destination table
-	router.Get("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleGetBookmarkData))
+	router.Get("/bookmark/specific/{bookmark_id}", makeHTTPHandleFunc(s.handleGetBookmarkData))
 
 	// handle updated bookmark name
-	router.Put("/boomark/{bookmark_id}", makeHTTPHandleFunc(s.handleBookmarkUpdateName))
+	router.Put("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleBookmarkUpdateName))
 
-	// handle delete bookmark name 
+	// handle delete bookmark name
 	router.Delete("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkName))
 
 	// handle delete data bookmark
-	router.Delete("/bookmark/{destination_book_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkDestination))
+	router.Delete("/bookmark/specific/{destination_book_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkDestination))
 
 	log.Println("Server running in Port:", s.listenAddr)
 
@@ -85,17 +84,16 @@ func (s *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) error {
 	account, err := s.store.SignUp(newAccount)
 	if err != nil {
 		return err
-	} 
-
-	tokenStr, err := CreateJWT(account.ID)
-	if err != nil {
-		return err
 	}
 
-	if err := sendEmail(account.Email, tokenStr); err != nil {
-		return err
-	}
+	// tokenStr, err := CreateJWT(account.ID)
+	// if err != nil {
+	// 	return err
+	// }
 
+	// if err := sendEmail(account.Email, tokenStr); err != nil {
+	// 	return err
+	// }
 
 	return WriteJSON(w, http.StatusOK, account)
 }
@@ -112,15 +110,15 @@ func (s *APIServer) handleSignIn(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// create token
-	tokenStr, err := CreateJWT(account.ID)
-	if err != nil {
-		return err
-	}
+	// // create token
+	// tokenStr, err := CreateJWT(account.ID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if err := sendEmail(account.Email, tokenStr); err != nil {
-		return err
-	}
+	// if err := sendEmail(account.Email, tokenStr); err != nil {
+	// 	return err
+	// }
 
 	return WriteJSON(w, http.StatusOK, account)
 }
@@ -146,23 +144,23 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name: "token",
-		Value: tokenStr,
+		Name:    "token",
+		Value:   tokenStr,
 		Expires: claims.ExpiresAt.Time,
-		Domain: "http://localhost:8080",
-		Path: "/",
+		Domain:  "http://localhost:8080",
+		Path:    "/",
 	})
 	return nil
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &http.Cookie{
-		Name: "token",
-		Value: "",
+		Name:    "token",
+		Value:   "",
 		Expires: time.Now(),
-		MaxAge: -1,
-		Domain: "http://localhost:8080",
-		Path: "/",
+		MaxAge:  -1,
+		Domain:  "http://localhost:8080",
+		Path:    "/",
 	})
 	return WriteJSON(w, http.StatusOK, map[string]string{"status": "Logout success"})
 }
@@ -170,7 +168,11 @@ func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {
 // handle GET ALL DATA DESTINATION
 func (s *APIServer) handleGetAllDestination(w http.ResponseWriter, r *http.Request) error {
 	// get param city
-	cityParam := chi.URLParam(r, "city")
+	param := chi.URLParam(r, "city")
+	cityParam, err := url.QueryUnescape(param)
+	if err != nil {
+		return err
+	}
 
 	// check if there is city in database or not
 	city, err := s.store.CheckCity(cityParam)
@@ -185,9 +187,9 @@ func (s *APIServer) handleGetAllDestination(w http.ResponseWriter, r *http.Reque
 	}
 
 	sendAllData := &SendAllDestinationType{
-		Name_City: city.Name_City,
-		Lat_City: city.Lat_City,
-		Long_City: city.Long_City,
+		Name_City:        city.Name_City,
+		Lat_City:         city.Lat_City,
+		Long_City:        city.Long_City,
 		List_Destination: allDestination,
 	}
 
@@ -203,7 +205,7 @@ func (s *APIServer) handleGetDestination(w http.ResponseWriter, r *http.Request)
 	}
 
 	// call destination table to get name and url
-	destination, err :=  s.store.GetDestination(destination_idParam)
+	destination, err := s.store.GetDestination(destination_idParam)
 	if err != nil {
 		return err
 	}
@@ -215,10 +217,10 @@ func (s *APIServer) handleGetDestination(w http.ResponseWriter, r *http.Request)
 	}
 
 	sendData := &SendSpecificDestinationType{
-		ID: destination.ID,
+		ID:               destination.ID,
 		Name_Destination: destination.Name_Destination,
-		URL_Destination: destination.URL_Destination,
-		List_Image: images,
+		URL_Destination:  destination.URL_Destination,
+		List_Image:       images,
 	}
 
 	return WriteJSON(w, http.StatusOK, sendData)
@@ -230,7 +232,7 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 	book := new(NewBookmarkType)
 	if err := json.NewDecoder(r.Body).Decode(book); err != nil {
 		return err
-	} 
+	}
 
 	defer r.Body.Close()
 
@@ -244,7 +246,17 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 
 // handle get all bookmark name
 func (s *APIServer) handleGetBookmarkName(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	user_id, err := strconv.Atoi(chi.URLParam(r, "user_id"))
+	if err != nil {
+		return err
+	}
+
+	bookmarks, err := s.store.GetAllBookmark(user_id)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, bookmarks)
 }
 
 // handle save data into bookmark
@@ -270,7 +282,7 @@ func (s *APIServer) handleCreateAndSaveIntoBookmark(w http.ResponseWriter, r *ht
 
 	// create bookmark
 	newBookData := &NewBookmarkType{
-		User_ID: newBookReq.User_ID,
+		User_ID:       newBookReq.User_ID,
 		Name_Bookmark: newBookReq.Name_Bookmark,
 	}
 
@@ -282,7 +294,7 @@ func (s *APIServer) handleCreateAndSaveIntoBookmark(w http.ResponseWriter, r *ht
 	// save data
 	newSaveData := &CreateNewUser_SaveType{
 		Destination_ID: newBookReq.Destination_ID,
-		Bookmark_ID: newBook.ID,
+		Bookmark_ID:    newBook.ID,
 	}
 
 	if err := s.store.SaveBookmarkData(newSaveData); err != nil {
@@ -358,7 +370,7 @@ func (s *APIServer) handleDeleteBookmarkDestination(w http.ResponseWriter, r *ht
 // create JWT
 func CreateJWT(user_id int) (string, error) {
 	// declare expiration time with 24 hours
-	expirationTime := time.Now().Add(24*time.Hour)
+	expirationTime := time.Now().Add(24 * time.Hour)
 
 	// declare jwt claims
 	claims := &ClaimsType{
@@ -382,7 +394,7 @@ func CreateJWT(user_id int) (string, error) {
 
 // MIDDLEWARE TO HANDLE JWT VERIFICATION
 func WithJWTAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request)  {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
 
 		if err != nil {
@@ -428,7 +440,7 @@ func WithJWTAuth(next http.Handler) http.Handler {
 
 		// check is expiration time is end? if end create new one or updated
 		if time.Until(claims.ExpiresAt.Time) <= 30*time.Second && time.Until(claims.ExpiresAt.Time) > 0*time.Second {
-			newExpirationTime := time.Now().Add(24*time.Hour)
+			newExpirationTime := time.Now().Add(24 * time.Hour)
 			claims.ExpiresAt = jwt.NewNumericDate(newExpirationTime)
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newTokenString, err := token.SignedString(jwtKey)
@@ -439,11 +451,11 @@ func WithJWTAuth(next http.Handler) http.Handler {
 			}
 
 			http.SetCookie(w, &http.Cookie{
-				Name: "token",
-				Value: newTokenString,
+				Name:    "token",
+				Value:   newTokenString,
 				Expires: newExpirationTime,
-				Domain: "http://localhost:8080",
-				Path: "/",
+				Domain:  "http://localhost:8080",
+				Path:    "/",
 			})
 		}
 

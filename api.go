@@ -86,14 +86,14 @@ func (s *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// tokenStr, err := CreateJWT(account.ID)
-	// if err != nil {
-	// 	return err
-	// }
+	tokenStr, err := CreateJWT(account.ID)
+	if err != nil {
+		return err
+	}
 
-	// if err := sendEmail(account.Email, tokenStr); err != nil {
-	// 	return err
-	// }
+	if err := sendEmail(account.Email, tokenStr); err != nil {
+		return err
+	}
 
 	return WriteJSON(w, http.StatusOK, account)
 }
@@ -110,15 +110,15 @@ func (s *APIServer) handleSignIn(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// // create token
-	// tokenStr, err := CreateJWT(account.ID)
-	// if err != nil {
-	// 	return err
-	// }
+	// create token
+	tokenStr, err := CreateJWT(account.ID)
+	if err != nil {
+		return err
+	}
 
-	// if err := sendEmail(account.Email, tokenStr); err != nil {
-	// 	return err
-	// }
+	if err := sendEmail(account.Email, tokenStr); err != nil {
+		return err
+	}
 
 	return WriteJSON(w, http.StatusOK, account)
 }

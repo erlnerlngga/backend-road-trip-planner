@@ -142,13 +142,14 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "Signature Invalid"})
+			return WriteJSON(w, http.StatusOK, ApiError{Error: "Signature Invalid"})
 		}
-		return WriteJSON(w, http.StatusBadRequest, ApiError{Error: err.Error()})
+		return WriteJSON(w, http.StatusOK, ApiError{Error: err.Error()})
 	}
 
 	if !token.Valid {
-		return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "token invalid"})
+		return WriteJSON(w, http.StatusOK, ApiError{Error: "token invalid"})
+		//return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "token invalid"})
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -158,7 +159,7 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 		Domain:  "http://localhost:8080",
 		Path:    "/",
 	})
-	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "user_id": strconv.Itoa(claims.User_ID)})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {

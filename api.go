@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -34,6 +35,13 @@ func (s *APIServer) Run() {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
+
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://127.0.0.1", "http://0.0.0.0"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: false,
+	}))
 
 	router.Post("/signup", makeHTTPHandleFunc(s.handleSignUp))
 	router.Post("/signin", makeHTTPHandleFunc(s.handleSignIn))
@@ -150,7 +158,7 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 		Domain:  "http://localhost:8080",
 		Path:    "/",
 	})
-	return nil
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {

@@ -450,9 +450,25 @@ func (s *MysqlStore) GetSingleImageSave_User(des_id int, d *SendDataUser_SaveTyp
 	return d, nil
 }
 
+// get city name
+func (s *MysqlStore) getCityName(city_id int, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error) {
+
+	err := s.db.QueryRow("select name_city from city where id = ?;", city_id).Scan(&d.Name_City)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("city: %d not found", city_id)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // get all data from bookmark
 func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_SaveType, error) {
-	queryStr := "select user_save.id as `user_save_id`, destination.id as `destination_id`, destination.name_destination as `name_destination`, destination.url_destination as `url_destination` from user_save inner join destination on user_save.destination_id = destination.id where user_save.bookmark_id = ?;"
+	queryStr := "select user_save.id as `user_save_id`, destination.id as `destination_id`, destination.name_destination as `name_destination`, destination.url_destination as `url_destination`, destination.city_id as `city_id` from user_save inner join destination on user_save.destination_id = destination.id where user_save.bookmark_id = ?;"
 
 	rows, err := s.db.Query(queryStr, bookmark_id)
 
@@ -466,11 +482,17 @@ func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_Save
 	for rows.Next() {
 		u := new(SendDataUser_SaveType)
 
-		if err := rows.Scan(&u.User_Save_ID, &u.Destination_ID, &u.Name_Destination, &u.URL_Destination); err != nil {
+		if err := rows.Scan(&u.User_Save_ID, &u.Destination_ID, &u.Name_Destination, &u.URL_Destination, &u.City_ID); err != nil {
 			return nil, err
 		}
 
 		u, err := s.GetSingleImageSave_User(u.Destination_ID, u)
+
+		if err != nil {
+			return nil, err
+		}
+
+		u, err = s.getCityName(u.City_ID, u)
 
 		if err != nil {
 			return nil, err

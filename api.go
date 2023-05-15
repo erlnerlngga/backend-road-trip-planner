@@ -7,7 +7,6 @@ import (
 	"net/smtp"
 	"net/url"
 	"os"
-	"time"
 
 	"strconv"
 
@@ -22,6 +21,7 @@ var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 type APIServer struct {
 	listenAddr string
 	store      Storage
+	user_id 	 int
 }
 
 func NewApiServer(listenAddr string, storage Storage) *APIServer {
@@ -37,44 +37,49 @@ func (s *APIServer) Run() {
 	router.Use(middleware.Logger)
 
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://127.0.0.1", "http://0.0.0.0"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: false,
-	}))
+    AllowedOrigins:   []string{"http://localhost:3000"},
+    AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+    AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+    AllowCredentials: true,
+  }))
+
+	// router.Use(enableCORS)
 
 	router.Post("/signup", makeHTTPHandleFunc(s.handleSignUp))
 	router.Post("/signin", makeHTTPHandleFunc(s.handleSignIn))
-	router.Get("/signin/{token}", makeHTTPHandleFunc(s.handleVerifySignIn))
+	router.Get("/auth/{token}", makeHTTPHandleFunc(s.handleVerifySignIn))
 
-	router.Get("/logout", makeHTTPHandleFunc(s.handleLogout))
+	router.Group(func(r chi.Router) {
+		r.Use(WithJWTAuth)
+		r.Get("/logout", makeHTTPHandleFunc(s.handleLogout))
 
-	router.Get("/destination/{city}", makeHTTPHandleFunc(s.handleGetAllDestination))
-	router.Get("/destination/specific/{destination_id}", makeHTTPHandleFunc(s.handleGetDestination))
+		r.Get("/destination/{city}", makeHTTPHandleFunc(s.handleGetAllDestination))
+		r.Get("/destination/specific/{destination_id}", makeHTTPHandleFunc(s.handleGetDestination))
 
-	// create new bookmark
-	router.Post("/bookmark", makeHTTPHandleFunc(s.handleCreateNewBookmark))
+		// create new bookmark
+		r.Post("/bookmark", makeHTTPHandleFunc(s.handleCreateNewBookmark))
 
-	// save data into bookmark
-	router.Post("/bookmark/save", makeHTTPHandleFunc(s.handleSaveIntoBookmark))
+		// save data into bookmark
+		r.Post("/bookmark/save", makeHTTPHandleFunc(s.handleSaveIntoBookmark))
 
-	// create new bookmark and save
-	router.Post("/bookmark/create-and-save", makeHTTPHandleFunc(s.handleCreateAndSaveIntoBookmark))
+		// create new bookmark and save
+		r.Post("/bookmark/create-and-save", makeHTTPHandleFunc(s.handleCreateAndSaveIntoBookmark))
 
-	// get all bookmark name
-	router.Get("/bookmark/{user_id}", makeHTTPHandleFunc(s.handleGetBookmarkName))
+		// get all bookmark name
+		r.Get("/bookmark", makeHTTPHandleFunc(s.handleGetBookmarkName))
 
-	// handle get all data from bookmark call save_user table base on bookmark_id and join with destination table
-	router.Get("/bookmark/specific/{bookmark_id}", makeHTTPHandleFunc(s.handleGetBookmarkData))
+		// handle get all data from bookmark call save_user table base on bookmark_id and join with destination table
+		r.Get("/bookmark/specific/{bookmark_id}", makeHTTPHandleFunc(s.handleGetBookmarkData))
 
-	// handle updated bookmark name
-	router.Put("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleBookmarkUpdateName))
+		// handle updated bookmark name
+		r.Put("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleBookmarkUpdateName))
 
-	// handle delete bookmark name
-	router.Delete("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkName))
+		// handle delete bookmark name
+		r.Delete("/bookmark/{bookmark_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkName))
 
-	// handle delete data bookmark
-	router.Delete("/bookmark/specific/{destination_book_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkDestination))
+		// handle delete data bookmark
+		r.Delete("/bookmark/specific/{destination_book_id}", makeHTTPHandleFunc(s.handleDeleteBookmarkDestination))
+	})
 
 	log.Println("Server running in Port:", s.listenAddr)
 
@@ -103,7 +108,7 @@ func (s *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, account)
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func (s *APIServer) handleSignIn(w http.ResponseWriter, r *http.Request) error {
@@ -128,7 +133,7 @@ func (s *APIServer) handleSignIn(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, account)
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) error {
@@ -149,28 +154,14 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 
 	if !token.Valid {
 		return WriteJSON(w, http.StatusOK, ApiError{Error: "token invalid"})
-		//return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "token invalid"})
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   tokenStr,
-		Expires: claims.ExpiresAt.Time,
-		Domain:  "http://localhost:8080",
-		Path:    "/",
-	})
-	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "user_id": strconv.Itoa(claims.User_ID)})
+	s.user_id = claims.User_ID
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "token": tokenStr,})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {
-	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   "",
-		Expires: time.Now(),
-		MaxAge:  -1,
-		Domain:  "http://localhost:8080",
-		Path:    "/",
-	})
+	s.user_id = -1
 	return WriteJSON(w, http.StatusOK, map[string]string{"status": "Logout success"})
 }
 
@@ -243,24 +234,26 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
+	book.User_ID = s.user_id
+
 	defer r.Body.Close()
 
-	newBook, err := s.store.CreateNewBookmark(book)
+	_, err := s.store.CreateNewBookmark(book)
 	if err != nil {
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, newBook)
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 // handle get all bookmark name
 func (s *APIServer) handleGetBookmarkName(w http.ResponseWriter, r *http.Request) error {
-	user_id, err := strconv.Atoi(chi.URLParam(r, "user_id"))
-	if err != nil {
-		return err
-	}
+	// user_id, err := strconv.Atoi(chi.URLParam(r, "user_id"))
+	// if err != nil {
+	// 	return err
+	// }
 
-	bookmarks, err := s.store.GetAllBookmark(user_id)
+	bookmarks, err := s.store.GetAllBookmark(s.user_id)
 	if err != nil {
 		return err
 	}
@@ -376,105 +369,11 @@ func (s *APIServer) handleDeleteBookmarkDestination(w http.ResponseWriter, r *ht
 	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
-// create JWT
-func CreateJWT(user_id int) (string, error) {
-	// declare expiration time with 24 hours
-	expirationTime := time.Now().Add(24 * time.Hour)
 
-	// declare jwt claims
-	claims := &ClaimsType{
-		User_ID: user_id,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-
-	// declare token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// create jwt string
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
-}
-
-// MIDDLEWARE TO HANDLE JWT VERIFICATION
-func WithJWTAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("token")
-
-		if err != nil {
-			if err == http.ErrNoCookie {
-				// if cookie is not yet set
-				WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "no cookie"})
-				return
-			}
-
-			WriteJSON(w, http.StatusBadRequest, ApiError{Error: err.Error()})
-			return
-		}
-
-		// get token from jwt
-		tokenString := c.Value
-
-		// init claims
-		claims := new(ClaimsType)
-
-		// Parse the JWT string and store the result in `claims`.
-		// Note that we are passing the key in this method as well. This method will return an error
-		// if the token is invalid (if it has expired according to the expiry time we set on sign in),
-		// or if the signature does not match
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "Signature Invalid"})
-				return
-			}
-
-			WriteJSON(w, http.StatusBadRequest, ApiError{Error: err.Error()})
-			return
-		}
-
-		if !token.Valid {
-			WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "token invalid"})
-			return
-		}
-
-		// check is expiration time is end? if end create new one or updated
-		if time.Until(claims.ExpiresAt.Time) <= 30*time.Second && time.Until(claims.ExpiresAt.Time) > 0*time.Second {
-			newExpirationTime := time.Now().Add(24 * time.Hour)
-			claims.ExpiresAt = jwt.NewNumericDate(newExpirationTime)
-			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-			newTokenString, err := token.SignedString(jwtKey)
-
-			if err != nil {
-				WriteJSON(w, http.StatusInternalServerError, ApiError{Error: err.Error()})
-				return
-			}
-
-			http.SetCookie(w, &http.Cookie{
-				Name:    "token",
-				Value:   newTokenString,
-				Expires: newExpirationTime,
-				Domain:  "http://localhost:8080",
-				Path:    "/",
-			})
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
 
 // Function Helper
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	w.Header().Add("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 }
@@ -498,13 +397,13 @@ func makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 // handle send email
 func sendEmail(email, token string) error {
 	// set email auth
-	authEmail := smtp.PlainAuth("", os.Getenv("EMAIL"), os.Getenv("EMAIL_PASSWORD"), "smtp.gmail.com")
+	authEmail := smtp.PlainAuth("", os.Getenv("EMAIL"), os.Getenv("PASSWORD_EMAIL"), "smtp.gmail.com")
 
 	// compose email
 	to := []string{email}
-	msg := []byte("To: " + email + "\r\n" + "Subject: Login Link\r\n" + "\r\n" + "http://127.0.0.1:3000/login/" + token)
+	msg := []byte("To: " + email + "\r\n" + "Subject: Sign In Link\r\n" + "\r\n" + "http://localhost:3000/auth/" + token)
 
-	if err := smtp.SendMail("smtp.gmail.com:587", authEmail, os.Getenv("EMAIL"), to, msg); err != nil {
+	if err := smtp.SendMail("smtp.gmail.com:587", authEmail, "laann.en@gmail.com", to, msg); err != nil {
 		return err
 	}
 

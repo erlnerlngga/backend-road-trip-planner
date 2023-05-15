@@ -124,6 +124,8 @@ type CreateNewUser_SaveType struct {
 }
 
 type SendDataUser_SaveType struct {
+	Name_City        string `json:"name_city"`
+	City_ID          int    `json:"city_id"`
 	User_Save_ID     int    `json:"user_save_id"`
 	Destination_ID   int    `json:"destination_id"`
 	Name_Destination string `json:"name_destination"`

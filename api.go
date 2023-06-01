@@ -21,7 +21,7 @@ var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 type APIServer struct {
 	listenAddr string
 	store      Storage
-	user_id 	 int
+	user_id    int
 }
 
 func NewApiServer(listenAddr string, storage Storage) *APIServer {
@@ -37,11 +37,11 @@ func (s *APIServer) Run() {
 	router.Use(middleware.Logger)
 
 	router.Use(cors.Handler(cors.Options{
-    AllowedOrigins:   []string{"http://localhost:3000"},
-    AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-    AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-    AllowCredentials: true,
-  }))
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowCredentials: true,
+	}))
 
 	// router.Use(enableCORS)
 
@@ -147,17 +147,17 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return WriteJSON(w, http.StatusOK, ApiError{Error: "Signature Invalid"})
+			return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "Signature Invalid"})
 		}
-		return WriteJSON(w, http.StatusOK, ApiError{Error: err.Error()})
+		return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: err.Error()})
 	}
 
 	if !token.Valid {
-		return WriteJSON(w, http.StatusOK, ApiError{Error: "token invalid"})
+		return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "token invalid"})
 	}
 
 	s.user_id = claims.User_ID
-	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "token": tokenStr,})
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "token": tokenStr})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) error {
@@ -368,8 +368,6 @@ func (s *APIServer) handleDeleteBookmarkDestination(w http.ResponseWriter, r *ht
 
 	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
-
-
 
 // Function Helper
 func WriteJSON(w http.ResponseWriter, status int, v any) error {

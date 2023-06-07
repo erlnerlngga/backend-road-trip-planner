@@ -9,7 +9,7 @@ import (
 )
 
 // create JWT
-func CreateJWT(user_id int) (string, error) {
+func CreateJWT(user_id string) (string, error) {
 	// declare expiration time with 24 hours
 	expirationTime := time.Now().Add(24 * time.Hour)
 
@@ -44,14 +44,14 @@ func WithJWTAuth(next http.Handler) http.Handler {
 		// sanity check
 		if authHeader == "" {
 			WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "no auth header"})
-			return 
-		} 
+			return
+		}
 
 		// split the header space
 		headerParts := strings.Split(authHeader, " ")
 		if len(headerParts) != 2 {
 			WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "invalid auth header"})
-			return 
+			return
 		}
 
 		tokenString := headerParts[1]

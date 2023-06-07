@@ -7,6 +7,7 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 )
 
 type Storage interface {
@@ -15,19 +16,19 @@ type Storage interface {
 	CreateNewCity(city *CreateNewCityType) (*CityType, error)
 	CheckCity(c string) (*CityType, error)
 	CreateNewDestination(des *CreateNewDestinationType) (*DestinationType, error)
-	GetSingleImage(des_id int, d *AllDestinationType) (*AllDestinationType, error)
-	GetAllDestination(city_id int) ([]*AllDestinationType, error)
-	GetDestination(des_id int) (*DestinationType, error)
+	GetSingleImage(des_id string, d *AllDestinationType) (*AllDestinationType, error)
+	GetAllDestination(city_id string) ([]*AllDestinationType, error)
+	GetDestination(des_id string) (*DestinationType, error)
 	CreateNewImage(img *CreateNewImageType) error
-	GetAllImages(des_id int) ([]*ImageType, error)
+	GetAllImages(des_id string) ([]*ImageType, error)
 	CreateNewBookmark(book *NewBookmarkType) (*BookmarkType, error)
-	GetAllBookmark(user_id int) ([]*BookmarkType, error)
+	GetAllBookmark(user_id string) ([]*BookmarkType, error)
 	SaveBookmarkData(newSave *CreateNewUser_SaveType) error
-	GetSingleImageSave_User(des_id int, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error)
-	GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_SaveType, error)
-	UpdateBookmarkName(id int, name *UpdateBookmarkNameType) error
-	DeleteBookmark(id int) error
-	DeleteBookmarkData(id int) error
+	GetSingleImageSave_User(des_id string, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error)
+	GetAllDataByBookmark(bookmark_id string) ([]*SendDataUser_SaveType, error)
+	UpdateBookmarkName(bookmark_id string, name *UpdateBookmarkNameType) error
+	DeleteBookmark(bookmark_id string) error
+	DeleteBookmarkData(user_save_id string) error
 }
 
 type MysqlStore struct {
@@ -57,10 +58,10 @@ func NewMysqlStore() (*MysqlStore, error) {
 func (s *MysqlStore) CreateTableUser() error {
 	createTable := `
 		create table if not exists user (
-			id int auto_increment,
-			name varchar(50) not null,
-			email varchar(50) not null unique,
-			primary key(id)
+			user_id varchar(100),
+			user_name varchar(100) not null,
+			email varchar(100) not null unique,
+			primary key(user_id)
 		);
 	`
 
@@ -73,11 +74,11 @@ func (s *MysqlStore) CreateTableUser() error {
 func (s *MysqlStore) CreateTableCity() error {
 	createTable := `
 		create table if not exists city (
-			id int auto_increment,
-			name_city varchar(50) not null unique,
-			lat_city decimal(10,7) not null,
-			long_city decimal(10,7) not null,
-			primary key(id)
+			city_id varchar(100),
+			city_name varchar(50) not null unique,
+			city_lat decimal(10,7) not null,
+			city_long decimal(10,7) not null,
+			primary key(city_id)
 		);
 	`
 	_, err := s.db.Exec(createTable)
@@ -89,13 +90,13 @@ func (s *MysqlStore) CreateTableCity() error {
 func (s *MysqlStore) CreateTableDestination() error {
 	createTable := `
 		create table if not exists destination (
-			id int auto_increment,
-			name_destination varchar(100),
-			url_destination varchar(200),
-			lat_destination decimal(10,7) not null,
-			long_destination decimal(10,7) not null,
-			city_id int references city(id),
-			primary key(id)
+			destination_id varchar(100),
+			destination_name varchar(100),
+			destination_url varchar(200),
+			destination_lat decimal(10,7) not null,
+			destination_long decimal(10,7) not null,
+			city_id varchar(100) references city(city_id),
+			primary key(destination_id)
 		);
 	`
 
@@ -108,10 +109,10 @@ func (s *MysqlStore) CreateTableDestination() error {
 func (s *MysqlStore) CreateTableImage() error {
 	createTable := `
 		create table if not exists image (
-			id int auto_increment,
-			url_image varchar(200) not null,
-			destination_id int references destination(id),
-			primary key(id)
+			image_id varchar(100),
+			image_url varchar(500) not null,
+			destination_id varchar(100) references destination(destination_id),
+			primary key(image_id)
 		);
 	`
 	_, err := s.db.Exec(createTable)
@@ -123,10 +124,10 @@ func (s *MysqlStore) CreateTableImage() error {
 func (s *MysqlStore) CreateTableBookmark() error {
 	createTable := `
 		create table if not exists bookmark (
-			id int auto_increment,
-			name_bookmark varchar(50) not null,
-			user_id int references user(id),
-			primary key(id)
+			bookmark_id varchar(100),
+			bookmark_name varchar(50) not null,
+			user_id varchar(100) references user(user_id),
+			primary key(bookmark_id)
 		);
 	`
 	_, err := s.db.Exec(createTable)
@@ -138,10 +139,10 @@ func (s *MysqlStore) CreateTableBookmark() error {
 func (s *MysqlStore) CreateTableUserSave() error {
 	craeteTable := `
 		create table if not exists user_save (
-			id int auto_increment,
-			destination_id int references destination(id),
-			bookmark_id int references bookmark(id) on delete cascade,
-			primary key(id)
+			user_save_id varchar(100),
+			destination_id varchar(100) references destination(destination_id),
+			bookmark_id varchar(100) references bookmark(bookmark_id) on delete cascade,
+			primary key(user_save_id)
 		);
 	`
 
@@ -182,13 +183,14 @@ func (s *MysqlStore) init() error {
 // check email
 func (s *MysqlStore) CheckEmail(email string) (*AccountType, error) {
 	acc := new(AccountType)
-	err := s.db.QueryRow(`select * from user where email = ?;`, email).Scan(&acc.ID, &acc.Name, &acc.Email)
+	err := s.db.QueryRow(`select * from user where email = ?;`, email).Scan(&acc.User_ID, &acc.User_Name, &acc.Email)
 
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("account %s not found", email)
 	}
 
 	if err != nil {
+		log.Println("1. CheckEmail", err)
 		return nil, err
 	}
 
@@ -199,15 +201,19 @@ func (s *MysqlStore) CheckEmail(email string) (*AccountType, error) {
 func (s *MysqlStore) SignUp(acc *SignUpType) (*AccountType, error) {
 	account := new(AccountType)
 
-	insertQuery := `insert into user(name, email) values (?, ?);`
+	id := uuid.New().String()
 
-	_, err := s.db.Exec(insertQuery, acc.Name, acc.Email)
+	insertQuery := `insert into user(user_id, user_name, email) values (?, ?, ?);`
+
+	_, err := s.db.Exec(insertQuery, id, acc.User_Name, acc.Email)
 
 	if err != nil {
+		log.Println("1. SignUp", err)
 		return nil, err
 	}
 
-	if err := s.db.QueryRow(`select * from user where id = (select LAST_INSERT_ID());`).Scan(&account.ID, &account.Name, &account.Email); err != nil {
+	if err := s.db.QueryRow(`select * from user where user_id = ?;`, id).Scan(&account.User_ID, &account.User_Name, &account.Email); err != nil {
+		log.Println("2. SignUp", err)
 		return nil, err
 	}
 
@@ -218,15 +224,19 @@ func (s *MysqlStore) SignUp(acc *SignUpType) (*AccountType, error) {
 func (s *MysqlStore) CreateNewCity(city *CreateNewCityType) (*CityType, error) {
 	newCity := new(CityType)
 
-	insertQuery := `insert into city(name, lat_city, long_cty) values (?, ?, ?);`
+	id := uuid.New().String()
 
-	_, err := s.db.Exec(insertQuery, city.Name_City, city.Lat_City, city.Long_City)
+	insertQuery := `insert into city(city_id, city_name, city_lat, city_long) values (?, ?, ?, ?);`
+
+	_, err := s.db.Exec(insertQuery, id, city.City_Name, city.City_Lat, city.City_Long)
 
 	if err != nil {
+		log.Println("1. CreateNewCity", err)
 		return nil, err
 	}
 
-	if err := s.db.QueryRow(`select * from city where id = (select LAST_INSERT_ID());`).Scan(&newCity.ID, &newCity.Name_City, &newCity.Lat_City, &newCity.Long_City); err != nil {
+	if err := s.db.QueryRow(`select * from city where city_id = ?;`, id).Scan(&newCity.City_ID, &newCity.City_Name, &newCity.City_Lat, &newCity.City_Long); err != nil {
+		log.Println("2. CreateNewCity", err)
 		return nil, err
 	}
 
@@ -237,13 +247,14 @@ func (s *MysqlStore) CreateNewCity(city *CreateNewCityType) (*CityType, error) {
 func (s *MysqlStore) CheckCity(c string) (*CityType, error) {
 	city := new(CityType)
 
-	err := s.db.QueryRow("select * from city where name_city = ?;", c).Scan(&city.ID, &city.Name_City, &city.Lat_City, &city.Long_City)
+	err := s.db.QueryRow("select * from city where city_name = ?;", c).Scan(&city.City_ID, &city.City_Name, &city.City_Lat, &city.City_Long)
 
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("city: %s not found", c)
 	}
 
 	if err != nil {
+		log.Println("1. CheckCity", err)
 		return nil, err
 	}
 
@@ -254,15 +265,19 @@ func (s *MysqlStore) CheckCity(c string) (*CityType, error) {
 func (s *MysqlStore) CreateNewDestination(des *CreateNewDestinationType) (*DestinationType, error) {
 	newDes := new(DestinationType)
 
-	insertQuery := `insert into destination(name_destination, url_destination, lat_destination, long_destination, city_id) values (?, ?, ?, ?, ?);`
+	id := uuid.New().String()
 
-	_, err := s.db.Exec(insertQuery, des.Name_Destination, des.URL_Destination, des.Lat_Destination, des.Long_Destination, des.City_ID)
+	insertQuery := `insert into destination(destination_id, destination_name, destination_url, destination_lat, destination_long, city_id) values (?, ?, ?, ?, ?, ?);`
+
+	_, err := s.db.Exec(insertQuery, id, des.Destination_Name, des.Destination_URL, des.Destination_Lat, des.Destination_Long, des.City_ID)
 
 	if err != nil {
+		log.Println("1. CreateNewDestination", err)
 		return nil, err
 	}
 
-	if err := s.db.QueryRow("select * from destination where id = (select LAST_INSERT_ID());").Scan(&newDes.ID, &newDes.Name_Destination, &newDes.URL_Destination, &newDes.Lat_Destination, &newDes.Long_Destination, &newDes.City_ID); err != nil {
+	if err := s.db.QueryRow("select * from destination where destination_id = ?;", id).Scan(&newDes.Destination_ID, &newDes.Destination_Name, &newDes.Destination_URL, &newDes.Destination_Lat, &newDes.Destination_Long, &newDes.City_ID); err != nil {
+		log.Println("2. CreateNewDestination", err)
 		return nil, err
 	}
 
@@ -270,14 +285,15 @@ func (s *MysqlStore) CreateNewDestination(des *CreateNewDestinationType) (*Desti
 }
 
 // get single image
-func (s *MysqlStore) GetSingleImage(des_id int, d *AllDestinationType) (*AllDestinationType, error) {
-	err := s.db.QueryRow("select url_image from image where destination_id = ?;", des_id).Scan(&d.URL_Image)
+func (s *MysqlStore) GetSingleImage(des_id string, d *AllDestinationType) (*AllDestinationType, error) {
+	err := s.db.QueryRow("select image_url from image where destination_id = ?;", des_id).Scan(&d.Image_URL)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("image id: %d not found", des_id)
+		return nil, fmt.Errorf("image id: %s not found", des_id)
 	}
 
 	if err != nil {
+		log.Println("1. GetSingleImage", err)
 		return nil, err
 	}
 
@@ -285,10 +301,11 @@ func (s *MysqlStore) GetSingleImage(des_id int, d *AllDestinationType) (*AllDest
 }
 
 // if city is there get all destination data base on city
-func (s *MysqlStore) GetAllDestination(city_id int) ([]*AllDestinationType, error) {
-	rows, err := s.db.Query(`select id, name_destination, url_destination, lat_destination, long_destination from destination where city_id = ?;`, city_id)
+func (s *MysqlStore) GetAllDestination(city_id string) ([]*AllDestinationType, error) {
+	rows, err := s.db.Query(`select destination_id, destination_name, destination_url, destination_lat, destination_long from destination where city_id = ?;`, city_id)
 
 	if err != nil {
+		log.Println("1. GetAllDestination", err)
 		return nil, err
 	}
 
@@ -298,12 +315,14 @@ func (s *MysqlStore) GetAllDestination(city_id int) ([]*AllDestinationType, erro
 	for rows.Next() {
 		d := new(AllDestinationType)
 
-		if err := rows.Scan(&d.ID, &d.Name_Destination, &d.URL_Destination, &d.Lat_Destination, &d.Long_Destination); err != nil {
+		if err := rows.Scan(&d.Destination_ID, &d.Destination_Name, &d.Destination_URL, &d.Destination_Lat, &d.Destination_Long); err != nil {
+			log.Println("2. GetAllDestination", err)
 			return nil, err
 		}
 
-		d, err := s.GetSingleImage(d.ID, d)
+		d, err := s.GetSingleImage(d.Destination_ID, d)
 		if err != nil {
+			log.Println("3. GetAllDestination", err)
 			return nil, err
 		}
 
@@ -311,6 +330,7 @@ func (s *MysqlStore) GetAllDestination(city_id int) ([]*AllDestinationType, erro
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Println("4. GetAllDestination", err)
 		return nil, err
 	}
 
@@ -318,16 +338,17 @@ func (s *MysqlStore) GetAllDestination(city_id int) ([]*AllDestinationType, erro
 }
 
 // get single destination
-func (s *MysqlStore) GetDestination(des_id int) (*DestinationType, error) {
+func (s *MysqlStore) GetDestination(des_id string) (*DestinationType, error) {
 	destination := new(DestinationType)
 
-	err := s.db.QueryRow("select * from destination where id = ?;", des_id).Scan(&destination.ID, &destination.Name_Destination, &destination.URL_Destination, &destination.Lat_Destination, &destination.Long_Destination, &destination.City_ID)
+	err := s.db.QueryRow("select * from destination where destination_id = ?;", des_id).Scan(&destination.Destination_ID, &destination.Destination_Name, &destination.Destination_URL, &destination.Destination_Lat, &destination.Destination_Long, &destination.City_ID)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("destination id: %d not found", des_id)
+		return nil, fmt.Errorf("destination id: %s not found", des_id)
 	}
 
 	if err != nil {
+		log.Println("1. GetDestination", err)
 		return nil, err
 	}
 
@@ -336,11 +357,14 @@ func (s *MysqlStore) GetDestination(des_id int) (*DestinationType, error) {
 
 // create new images
 func (s *MysqlStore) CreateNewImage(img *CreateNewImageType) error {
-	insertQuery := `insert into image(url_image, destination_id) values (?, ?);`
+	id := uuid.New().String()
 
-	_, err := s.db.Exec(insertQuery, img.URL_Image, img.Destination_ID)
+	insertQuery := `insert into image(image_id, image_url, destination_id) values (?, ?, ?);`
+
+	_, err := s.db.Exec(insertQuery, id, img.Image_URL, img.Destination_ID)
 
 	if err != nil {
+		log.Println("1. CreateNewImage", err)
 		return err
 	}
 
@@ -348,10 +372,11 @@ func (s *MysqlStore) CreateNewImage(img *CreateNewImageType) error {
 }
 
 // get all Image
-func (s *MysqlStore) GetAllImages(des_id int) ([]*ImageType, error) {
+func (s *MysqlStore) GetAllImages(des_id string) ([]*ImageType, error) {
 	rows, err := s.db.Query("select * from image where destination_id = ?;", des_id)
 
 	if err != nil {
+		log.Println("1. GetAllImages", err)
 		return nil, err
 	}
 
@@ -361,7 +386,8 @@ func (s *MysqlStore) GetAllImages(des_id int) ([]*ImageType, error) {
 	for rows.Next() {
 		i := new(ImageType)
 
-		if err := rows.Scan(&i.ID, &i.URL_Image, &i.Destination_ID); err != nil {
+		if err := rows.Scan(&i.Image_ID, &i.Image_URL, &i.Destination_ID); err != nil {
+			log.Println("2. GetAllImages", err)
 			return nil, err
 		}
 
@@ -369,6 +395,7 @@ func (s *MysqlStore) GetAllImages(des_id int) ([]*ImageType, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Println("3. GetAllImages", err)
 		return nil, err
 	}
 
@@ -378,16 +405,19 @@ func (s *MysqlStore) GetAllImages(des_id int) ([]*ImageType, error) {
 // create new bookmark
 func (s *MysqlStore) CreateNewBookmark(book *NewBookmarkType) (*BookmarkType, error) {
 	newBook := new(BookmarkType)
+	id := uuid.New().String()
 
-	insertQuery := `insert into bookmark(name_bookmark, user_id) values (?, ?);`
+	insertQuery := `insert into bookmark(bookmark_id, bookmark_name, user_id) values (?, ?, ?);`
 
-	_, err := s.db.Exec(insertQuery, book.Name_Bookmark, book.User_ID)
+	_, err := s.db.Exec(insertQuery, id, book.Bookmark_Name, book.User_ID)
 
 	if err != nil {
+		log.Println("1. CreateNewBookmark", err)
 		return nil, err
 	}
 
-	if err := s.db.QueryRow("select * from bookmark where id = (select LAST_INSERT_ID());").Scan(&newBook.ID, &newBook.Name_Bookmark, &newBook.User_ID); err != nil {
+	if err := s.db.QueryRow("select * from bookmark where bookmark_id = ?;", id).Scan(&newBook.Bookmark_ID, &newBook.Bookmark_Name, &newBook.User_ID); err != nil {
+		log.Println("2. CreateNewBookmark", err)
 		return nil, err
 	}
 
@@ -395,10 +425,11 @@ func (s *MysqlStore) CreateNewBookmark(book *NewBookmarkType) (*BookmarkType, er
 }
 
 // get all bookmark
-func (s *MysqlStore) GetAllBookmark(user_id int) ([]*BookmarkType, error) {
+func (s *MysqlStore) GetAllBookmark(user_id string) ([]*BookmarkType, error) {
 	rows, err := s.db.Query("select * from bookmark where user_id = ?;", user_id)
 
 	if err != nil {
+		log.Println("1. GetAllBookmark", err)
 		return nil, err
 	}
 
@@ -408,7 +439,8 @@ func (s *MysqlStore) GetAllBookmark(user_id int) ([]*BookmarkType, error) {
 	for rows.Next() {
 		b := new(BookmarkType)
 
-		if err := rows.Scan(&b.ID, &b.Name_Bookmark, &b.User_ID); err != nil {
+		if err := rows.Scan(&b.Bookmark_ID, &b.Bookmark_Name, &b.User_ID); err != nil {
+			log.Println("2. GetAllBookmark", err)
 			return nil, err
 		}
 
@@ -416,6 +448,7 @@ func (s *MysqlStore) GetAllBookmark(user_id int) ([]*BookmarkType, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Println("2. GetAllBookmark", err)
 		return nil, err
 	}
 
@@ -424,11 +457,13 @@ func (s *MysqlStore) GetAllBookmark(user_id int) ([]*BookmarkType, error) {
 
 // save bookmark data
 func (s *MysqlStore) SaveBookmarkData(newSave *CreateNewUser_SaveType) error {
-	insertQuery := `insert into user_save(destination_id, bookmark_id) values(?, ?);`
+	id := uuid.New().String()
+	insertQuery := `insert into user_save(user_save_id, destination_id, bookmark_id) values(?, ?, ?);`
 
-	_, err := s.db.Exec(insertQuery, newSave.Destination_ID, newSave.Bookmark_ID)
+	_, err := s.db.Exec(insertQuery, id, newSave.Destination_ID, newSave.Bookmark_ID)
 
 	if err != nil {
+		log.Println("1. SaveBookmarkData", err)
 		return err
 	}
 
@@ -436,14 +471,16 @@ func (s *MysqlStore) SaveBookmarkData(newSave *CreateNewUser_SaveType) error {
 }
 
 // get single image
-func (s *MysqlStore) GetSingleImageSave_User(des_id int, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error) {
-	err := s.db.QueryRow("select url_image from image where destination_id = ?;", des_id).Scan(&d.URL_Image)
+func (s *MysqlStore) GetSingleImageSave_User(des_id string, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error) {
+	err := s.db.QueryRow("select image_url from image where destination_id = ?;", des_id).Scan(&d.Image_URL)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("image id: %d not found", des_id)
+		log.Println("1. GetSingleImageSave_User", err)
+		return nil, fmt.Errorf("image id: %s not found", des_id)
 	}
 
 	if err != nil {
+		log.Println("2. GetSingleImageSave_User", err)
 		return nil, err
 	}
 
@@ -451,15 +488,17 @@ func (s *MysqlStore) GetSingleImageSave_User(des_id int, d *SendDataUser_SaveTyp
 }
 
 // get city name
-func (s *MysqlStore) getCityName(city_id int, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error) {
+func (s *MysqlStore) getCityName(city_id string, d *SendDataUser_SaveType) (*SendDataUser_SaveType, error) {
 
-	err := s.db.QueryRow("select name_city from city where id = ?;", city_id).Scan(&d.Name_City)
+	err := s.db.QueryRow("select city_name from city where city_id = ?;", city_id).Scan(&d.City_Name)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("city: %d not found", city_id)
+		log.Println("1. getCityName", err)
+		return nil, fmt.Errorf("city: %s not found", city_id)
 	}
 
 	if err != nil {
+		log.Println("2. getCityName", err)
 		return nil, err
 	}
 
@@ -467,12 +506,13 @@ func (s *MysqlStore) getCityName(city_id int, d *SendDataUser_SaveType) (*SendDa
 }
 
 // get all data from bookmark
-func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_SaveType, error) {
-	queryStr := "select user_save.id as `user_save_id`, destination.id as `destination_id`, destination.name_destination as `name_destination`, destination.url_destination as `url_destination`, destination.city_id as `city_id` from user_save inner join destination on user_save.destination_id = destination.id where user_save.bookmark_id = ?;"
+func (s *MysqlStore) GetAllDataByBookmark(bookmark_id string) ([]*SendDataUser_SaveType, error) {
+	queryStr := "select user_save.user_save_id as `user_save_id`, destination.destination_id as `destination_id`, destination.destination_name as `destination_name`, destination.destination_url as `destination_url`, destination.city_id as `city_id` from user_save inner join destination on user_save.destination_id = destination.destination_id where user_save.bookmark_id = ?;"
 
 	rows, err := s.db.Query(queryStr, bookmark_id)
 
 	if err != nil {
+		log.Println("1. GetAllDataByBookmark", err)
 		return nil, err
 	}
 
@@ -482,19 +522,22 @@ func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_Save
 	for rows.Next() {
 		u := new(SendDataUser_SaveType)
 
-		if err := rows.Scan(&u.User_Save_ID, &u.Destination_ID, &u.Name_Destination, &u.URL_Destination, &u.City_ID); err != nil {
+		if err := rows.Scan(&u.User_Save_ID, &u.Destination_ID, &u.Destination_Name, &u.Destination_URL, &u.City_ID); err != nil {
+			log.Println("2. GetAllDataByBookmark", err)
 			return nil, err
 		}
 
 		u, err := s.GetSingleImageSave_User(u.Destination_ID, u)
 
 		if err != nil {
+			log.Println("3. GetAllDataByBookmark", err)
 			return nil, err
 		}
 
 		u, err = s.getCityName(u.City_ID, u)
 
 		if err != nil {
+			log.Println("4. GetAllDataByBookmark", err)
 			return nil, err
 		}
 
@@ -503,6 +546,7 @@ func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_Save
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Println("5. GetAllDataByBookmark", err)
 		return nil, err
 	}
 
@@ -510,12 +554,13 @@ func (s *MysqlStore) GetAllDataByBookmark(bookmark_id int) ([]*SendDataUser_Save
 }
 
 // update bookmark name
-func (s *MysqlStore) UpdateBookmarkName(id int, name *UpdateBookmarkNameType) error {
-	updateQuery := `update bookmark set name_bookmark = ? where id = ?;`
+func (s *MysqlStore) UpdateBookmarkName(bookmark_id string, name *UpdateBookmarkNameType) error {
+	updateQuery := `update bookmark set bookmark_name = ? where bookmark_id = ?;`
 
-	_, err := s.db.Exec(updateQuery, name.Name_Bookmark, id)
+	_, err := s.db.Exec(updateQuery, name.Bookmark_Name, bookmark_id)
 
 	if err != nil {
+		log.Println("1. UpdateBookmarkName", err)
 		return err
 	}
 
@@ -523,16 +568,18 @@ func (s *MysqlStore) UpdateBookmarkName(id int, name *UpdateBookmarkNameType) er
 }
 
 // delete bookmark
-func (s *MysqlStore) DeleteBookmark(id int) error {
-	_, err := s.db.Exec("delete from user_save where bookmark_id = ?", id)
+func (s *MysqlStore) DeleteBookmark(bookmark_id string) error {
+	_, err := s.db.Exec("delete from user_save where bookmark_id = ?;", bookmark_id)
 
 	if err != nil {
+		log.Println("1. DeleteBookmark", err)
 		return err
 	}
 
-	_, err = s.db.Exec("delete from bookmark where id = ?", id)
+	_, err = s.db.Exec("delete from bookmark where bookmark_id = ?;", bookmark_id)
 
 	if err != nil {
+		log.Println("2. DeleteBookmark", err)
 		return err
 	}
 
@@ -540,10 +587,11 @@ func (s *MysqlStore) DeleteBookmark(id int) error {
 }
 
 // delete bookmark
-func (s *MysqlStore) DeleteBookmarkData(id int) error {
-	_, err := s.db.Exec("delete from user_save where id = ?", id)
+func (s *MysqlStore) DeleteBookmarkData(user_save_id string) error {
+	_, err := s.db.Exec("delete from user_save where user_save_id = ?", user_save_id)
 
 	if err != nil {
+		log.Println("1. DeleteBookmarkData", err)
 		return err
 	}
 

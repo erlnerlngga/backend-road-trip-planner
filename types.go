@@ -5,14 +5,14 @@ import (
 )
 
 type SignUpType struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	User_Name string `json:"user_name"`
+	Email     string `json:"email"`
 }
 
 type AccountType struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	User_ID   string `json:"user_id"`
+	User_Name string `json:"user_name"`
+	Email     string `json:"email"`
 }
 
 type SignInType struct {
@@ -20,119 +20,119 @@ type SignInType struct {
 }
 
 type ClaimsType struct {
-	User_ID int `json:"user_id"`
+	User_ID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
 // to Get city table
 type CityType struct {
-	ID        int     `json:"id"`
-	Name_City string  `json:"name_city"`
-	Lat_City  float64 `json:"lat_city"`
-	Long_City float64 `json:"long_city"`
+	City_ID   string  `json:"city_id"`
+	City_Name string  `json:"city_name"`
+	City_Lat  float64 `json:"city_lat"`
+	City_Long float64 `json:"city_long"`
 }
 
 // create new city\
 type CreateNewCityType struct {
-	Name_City string  `json:"name_city"`
-	Lat_City  float64 `json:"lat_city"`
-	Long_City float64 `json:"long_city"`
+	City_Name string  `json:"city_name"`
+	City_Lat  float64 `json:"city_lat"`
+	City_Long float64 `json:"city_long"`
 }
 
 // to get destination table
 type DestinationType struct {
-	ID               int     `json:"id"`
-	Name_Destination string  `json:"name_destination"`
-	URL_Destination  string  `json:"url_destination"`
-	Lat_Destination  float64 `json:"lat_destination"`
-	Long_Destination float64 `json:"long_destination"`
-	City_ID          int     `json:"city_id"`
+	Destination_ID   string  `json:"destination_id"`
+	Destination_Name string  `json:"destination_name"`
+	Destination_URL  string  `json:"destination_url"`
+	Destination_Lat  float64 `json:"destination_lat"`
+	Destination_Long float64 `json:"destination_long"`
+	City_ID          string  `json:"city_id"`
 }
 
 type CreateNewDestinationType struct {
-	Name_Destination string  `json:"name_destination"`
-	URL_Destination  string  `json:"url_destination"`
-	Lat_Destination  float64 `json:"lat_destination"`
-	Long_Destination float64 `json:"long_destination"`
-	City_ID          int     `json:"city_id"`
+	Destination_Name string  `json:"destination_name"`
+	Destination_URL  string  `json:"destination_url"`
+	Destination_Lat  float64 `json:"destination_lat"`
+	Destination_Long float64 `json:"destination_long"`
+	City_ID          string  `json:"city_id"`
 }
 
 // send data get All Destination
 type AllDestinationType struct {
-	ID               int     `json:"id"`
-	Name_Destination string  `json:"name_destination"`
-	URL_Destination  string  `json:"url_destination"`
-	Lat_Destination  float64 `json:"lat_destination"`
-	Long_Destination float64 `json:"long_destination"`
-	URL_Image        string  `json:"url_image"`
+	Destination_ID   string  `json:"destination_id"`
+	Destination_Name string  `json:"destination_name"`
+	Destination_URL  string  `json:"destination_url"`
+	Destination_Lat  float64 `json:"destination_lat"`
+	Destination_Long float64 `json:"destination_long"`
+	Image_URL        string  `json:"image_url"`
 }
 
 type SendAllDestinationType struct {
-	Name_City        string                `json:"name_city"`
-	Lat_City         float64               `json:"lat_city"`
-	Long_City        float64               `json:"long_city"`
+	City_Name        string                `json:"city_name"`
+	City_Lat         float64               `json:"city_lat"`
+	City_Long        float64               `json:"city_long"`
 	List_Destination []*AllDestinationType `json:"list_destination"`
 }
 
 type SendSpecificDestinationType struct {
-	ID               int          `json:"id"`
-	Name_Destination string       `json:"name_destination"`
-	URL_Destination  string       `json:"url_destination"`
+	Destination_ID   string       `json:"destination_id"`
+	Destination_Name string       `json:"destination_name"`
+	Destination_URL  string       `json:"destination_url"`
 	List_Image       []*ImageType `json:"list_image"`
 }
 
 type CreateNewImageType struct {
-	URL_Image      string `json:"url_image"`
-	Destination_ID int    `json:"destination_id"`
+	Image_URL      string `json:"image_url"`
+	Destination_ID string `json:"destination_id"`
 }
 
 // to get Image table
 type ImageType struct {
-	ID             int    `json:"id"`
-	URL_Image      string `json:"url_image"`
-	Destination_ID int    `json:"destination_id"`
+	Image_ID       string `json:"image_id"`
+	Image_URL      string `json:"image_url"`
+	Destination_ID string `json:"destination_id"`
 }
 
 type NewBookmarkType struct {
-	User_ID       int    `json:"user_id"`
-	Name_Bookmark string `json:"name_bookmark"`
+	User_ID       string `json:"user_id"`
+	Bookmark_Name string `json:"bookmark_name"`
 }
 
 type CreateBookmarkAndSaveType struct {
-	User_ID        int    `json:"user_id"`
-	Name_Bookmark  string `json:"name_bookmark"`
-	Destination_ID int    `json:"destination_id"`
+	User_ID        string `json:"user_id"`
+	Bookmark_Name  string `json:"bookmark_name"`
+	Destination_ID string `json:"destination_id"`
 }
 
 // to get bookmark table
 type BookmarkType struct {
-	ID            int    `json:"id"`
-	Name_Bookmark string `json:"name_bookmark"`
-	User_ID       int    `json:"user_id"`
+	Bookmark_ID   string `json:"bookmark_id"`
+	Bookmark_Name string `json:"bookmark_name"`
+	User_ID       string `json:"user_id"`
 }
 
 // to get user_save tabel
 type User_SaveType struct {
-	ID               int    `json:"id"`
-	Name_Destination string `json:"name_destination"`
-	URL_Destination  string `json:"url_destination"`
+	User_Save_ID     string `json:"user_save_id"`
+	Destination_Name string `json:"destination_name"`
+	Destination_URL  string `json:"destination_url"`
 }
 
 type CreateNewUser_SaveType struct {
-	Destination_ID int `json:"destination_id"`
-	Bookmark_ID    int `json:"bookmark_id"`
+	Destination_ID string `json:"destination_id"`
+	Bookmark_ID    string `json:"bookmark_id"`
 }
 
 type SendDataUser_SaveType struct {
-	Name_City        string `json:"name_city"`
-	City_ID          int    `json:"city_id"`
-	User_Save_ID     int    `json:"user_save_id"`
-	Destination_ID   int    `json:"destination_id"`
-	Name_Destination string `json:"name_destination"`
-	URL_Destination  string `json:"url_destination"`
-	URL_Image        string `json:"url_image"`
+	City_Name        string `json:"city_name"`
+	City_ID          string `json:"city_id"`
+	User_Save_ID     string `json:"user_save_id"`
+	Destination_ID   string `json:"destination_id"`
+	Destination_Name string `json:"destination_name"`
+	Destination_URL  string `json:"destination_url"`
+	Image_URL        string `json:"image_url"`
 }
 
 type UpdateBookmarkNameType struct {
-	Name_Bookmark string `json:"name_bookmark"`
+	Bookmark_Name string `json:"bookmark_name"`
 }

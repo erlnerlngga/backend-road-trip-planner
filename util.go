@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -59,7 +58,6 @@ func SendMAIL(email, user_name, token string) error {
 
 	err := dialer.DialAndSend(mailer)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 

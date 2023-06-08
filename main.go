@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
 )
@@ -27,6 +28,11 @@ func main() {
 
 	defer store.db.Close()
 
-	server := NewApiServer(":8000", store)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	server := NewApiServer("0.0.0.0:"+port, store)
 	server.Run()
 }

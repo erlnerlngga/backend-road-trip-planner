@@ -40,8 +40,6 @@ func (s *APIServer) Run() {
 		AllowCredentials: true,
 	}))
 
-	// router.Use(enableCORS)
-
 	router.Post("/signup", makeHTTPHandleFunc(s.handleSignUp))
 	router.Post("/signin", makeHTTPHandleFunc(s.handleSignIn))
 	router.Get("/auth/{token}", makeHTTPHandleFunc(s.handleVerifySignIn))

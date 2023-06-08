@@ -97,22 +97,26 @@ func (s *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) error {
 func (s *APIServer) handleSignIn(w http.ResponseWriter, r *http.Request) error {
 	email := new(SignInType)
 	if err := json.NewDecoder(r.Body).Decode(email); err != nil {
+		log.Println("1. handleSignIn", err)
 		return err
 	}
 	defer r.Body.Close()
 
 	account, err := s.store.CheckEmail(email.Email)
 	if err != nil {
+		log.Println("2. handleSignIn", err)
 		return err
 	}
 
 	// create token
 	tokenStr, err := CreateJWT(account.User_ID)
 	if err != nil {
+		log.Println("3. handleSignIn", err)
 		return err
 	}
 
 	if err := SendMAIL(account.Email, account.User_Name, tokenStr); err != nil {
+		log.Println("4. handleSignIn", err)
 		return err
 	}
 
@@ -130,8 +134,11 @@ func (s *APIServer) handleVerifySignIn(w http.ResponseWriter, r *http.Request) e
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
+			log.Println("1. handleVerifySignIn", err)
 			return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: "Signature Invalid"})
 		}
+
+		log.Println("2. handleVerifySignIn", err)
 		return WriteJSON(w, http.StatusUnauthorized, ApiError{Error: err.Error()})
 	}
 
@@ -154,18 +161,21 @@ func (s *APIServer) handleGetAllDestination(w http.ResponseWriter, r *http.Reque
 	param := chi.URLParam(r, "city")
 	cityParam, err := url.QueryUnescape(param)
 	if err != nil {
+		log.Println("1. handleGetAllDestination", err)
 		return err
 	}
 
 	// check if there is city in database or not
 	city, err := s.store.CheckCity(cityParam)
 	if err != nil {
+		log.Println("2. handleGetAllDestination", err)
 		return err
 	}
 
 	// get list destination base on city
 	allDestination, err := s.store.GetAllDestination(city.City_ID)
 	if err != nil {
+		log.Println("3. handleGetAllDestination", err)
 		return err
 	}
 
@@ -187,12 +197,14 @@ func (s *APIServer) handleGetDestination(w http.ResponseWriter, r *http.Request)
 	// call destination table to get name and url
 	destination, err := s.store.GetDestination(destination_idParam)
 	if err != nil {
+		log.Println("1. handleGetDestination", err)
 		return err
 	}
 
 	// and call image table to get all of image
 	images, err := s.store.GetAllImages(destination.Destination_ID)
 	if err != nil {
+		log.Println("2. handleGetDestination", err)
 		return err
 	}
 
@@ -211,6 +223,7 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 	// read data from the body
 	book := new(NewBookmarkType)
 	if err := json.NewDecoder(r.Body).Decode(book); err != nil {
+		log.Println("1. handleCreateNewBookmark", err)
 		return err
 	}
 
@@ -220,6 +233,7 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 
 	_, err := s.store.CreateNewBookmark(book)
 	if err != nil {
+		log.Println("2. handleCreateNewBookmark", err)
 		return err
 	}
 
@@ -230,6 +244,7 @@ func (s *APIServer) handleCreateNewBookmark(w http.ResponseWriter, r *http.Reque
 func (s *APIServer) handleGetBookmarkName(w http.ResponseWriter, r *http.Request) error {
 	bookmarks, err := s.store.GetAllBookmark(s.user_id)
 	if err != nil {
+		log.Println("3. handleCreateNewBookmark", err)
 		return err
 	}
 
@@ -240,10 +255,12 @@ func (s *APIServer) handleGetBookmarkName(w http.ResponseWriter, r *http.Request
 func (s *APIServer) handleSaveIntoBookmark(w http.ResponseWriter, r *http.Request) error {
 	newSave := new(CreateNewUser_SaveType)
 	if err := json.NewDecoder(r.Body).Decode(newSave); err != nil {
+		log.Println("1. handleSaveIntoBookmark", err)
 		return err
 	}
 
 	if err := s.store.SaveBookmarkData(newSave); err != nil {
+		log.Println("2. handleSaveIntoBookmark", err)
 		return err
 	}
 
@@ -254,6 +271,7 @@ func (s *APIServer) handleSaveIntoBookmark(w http.ResponseWriter, r *http.Reques
 func (s *APIServer) handleCreateAndSaveIntoBookmark(w http.ResponseWriter, r *http.Request) error {
 	newBookReq := new(CreateBookmarkAndSaveType)
 	if err := json.NewDecoder(r.Body).Decode(newBookReq); err != nil {
+		log.Println("1. handleCreateAndSaveIntoBookmark", err)
 		return err
 	}
 
@@ -265,6 +283,7 @@ func (s *APIServer) handleCreateAndSaveIntoBookmark(w http.ResponseWriter, r *ht
 
 	newBook, err := s.store.CreateNewBookmark(newBookData)
 	if err != nil {
+		log.Println("2. handleCreateAndSaveIntoBookmark", err)
 		return err
 	}
 
@@ -275,6 +294,7 @@ func (s *APIServer) handleCreateAndSaveIntoBookmark(w http.ResponseWriter, r *ht
 	}
 
 	if err := s.store.SaveBookmarkData(newSaveData); err != nil {
+		log.Println("3. handleCreateAndSaveIntoBookmark", err)
 		return err
 	}
 
@@ -287,11 +307,13 @@ func (s *APIServer) handleBookmarkUpdateName(w http.ResponseWriter, r *http.Requ
 
 	bookNewName := new(UpdateBookmarkNameType)
 	if err := json.NewDecoder(r.Body).Decode(bookNewName); err != nil {
+		log.Println("1. handleBookmarkUpdateName", err)
 		return err
 	}
 
 	// update
 	if err := s.store.UpdateBookmarkName(bookID, bookNewName); err != nil {
+		log.Println("2. handleBookmarkUpdateName", err)
 		return err
 	}
 
@@ -304,6 +326,7 @@ func (s *APIServer) handleGetBookmarkData(w http.ResponseWriter, r *http.Request
 
 	user_save_data, err := s.store.GetAllDataByBookmark(bookmark_id)
 	if err != nil {
+		log.Println("1. handleGetBookmarkData", err)
 		return err
 	}
 
@@ -315,6 +338,7 @@ func (s *APIServer) handleDeleteBookmarkName(w http.ResponseWriter, r *http.Requ
 	bookmark_id := chi.URLParam(r, "bookmark_id")
 
 	if err := s.store.DeleteBookmark(bookmark_id); err != nil {
+		log.Println("1. handleDeleteBookmarkName", err)
 		return err
 	}
 
@@ -326,6 +350,7 @@ func (s *APIServer) handleDeleteBookmarkDestination(w http.ResponseWriter, r *ht
 	user_dave_id := chi.URLParam(r, "destination_book_id")
 
 	if err := s.store.DeleteBookmarkData(user_dave_id); err != nil {
+		log.Println("1. handleDeleteBookmarkDestination", err)
 		return err
 	}
 

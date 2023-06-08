@@ -34,7 +34,7 @@ func (s *APIServer) Run() {
 	router.Use(middleware.Logger)
 
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://roadtrip.vercel.app/"},
+		AllowedOrigins:   []string{"https://roadtrip.vercel.app/", "https://roadtrip-laannen-gmailcom.vercel.app", "https://roadtrip-q7ki6cz9s-laannen-gmailcom.vercel.app", "https://roadtrip-git-main-laannen-gmailcom.vercel.app"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,

@@ -40,10 +40,10 @@ func (s *APIServer) Run() {
 		AllowCredentials: true,
 	}))
 
+	router.Get("/", makeHTTPHandleFunc(s.handleWelcome))
 	router.Post("/signup", makeHTTPHandleFunc(s.handleSignUp))
 	router.Post("/signin", makeHTTPHandleFunc(s.handleSignIn))
 	router.Get("/auth/{token}", makeHTTPHandleFunc(s.handleVerifySignIn))
-	router.Get("/test", makeHTTPHandleFunc(s.handleTest))
 
 	router.Group(func(r chi.Router) {
 		r.Use(WithJWTAuth)
@@ -65,8 +65,8 @@ func (s *APIServer) Run() {
 	http.ListenAndServe(s.listenAddr, router)
 }
 
-func (s *APIServer) handleTest(w http.ResponseWriter, r *http.Request) error {
-	return WriteJSON(w, http.StatusOK, map[string]string{"status": "success"})
+func (s *APIServer) handleWelcome(w http.ResponseWriter, r *http.Request) error {
+	return WriteJSON(w, http.StatusOK, map[string]string{"status": "welcome to roadtrip"})
 }
 
 func (s *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) error {
